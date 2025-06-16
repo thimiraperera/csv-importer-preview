@@ -2,7 +2,7 @@
 /*
 Plugin Name: Admin CSV Upload & Frontend Display
 Description: Upload CSV from admin area and display on front-end with filtering
-Version: 2.1
+Version: 2.2
 Author: Thimira Perera
 */
 
@@ -25,7 +25,7 @@ class CSV_Upload_Display {
             'csv-filter-js',
             plugin_dir_url(__FILE__) . 'js/csv-filter.js',
             array('jquery'),
-            '1.0',
+            '1.1',
             true
         );
     }
@@ -50,6 +50,11 @@ class CSV_Upload_Display {
         $message = get_transient('csv_upload_message');
         $msg_type = get_transient('csv_upload_msg_type');
         $csv_data = get_option('csv_upload_data');
+        
+        // Get options
+        $selected_columns = get_option('csv_selected_columns', array());
+        $filterable_columns = get_option('csv_filterable_columns', array());
+        $default_filter_columns = get_option('csv_default_filter_columns', array());
         ?>
         <div class="wrap">
             <h1>Upload CSV File</h1>
@@ -91,8 +96,6 @@ class CSV_Upload_Display {
             <?php if ($csv_data && !empty($csv_data['rows'])) : 
                 $num_columns = count($csv_data['rows'][0]);
                 $headers = $csv_data['headers'] ?? array_fill(0, $num_columns, '');
-                $selected_columns = get_option('csv_selected_columns', array());
-                $filterable_columns = get_option('csv_filterable_columns', array());
             ?>
                 <hr>
                 <h2>Column Filter Configuration</h2>
@@ -117,10 +120,19 @@ class CSV_Upload_Display {
                                         </label>
                                         
                                         <label style="margin-left: 15px;">
-                                            <input type="checkbox" name="filterable_columns[]" 
+                                            <input type="checkbox" class="filterable-toggle" 
+                                                name="filterable_columns[]" 
                                                 value="<?php echo $i; ?>" 
                                                 <?php checked(in_array($i, $filterable_columns)); ?>>
                                             Make filterable
+                                        </label>
+                                        
+                                        <label style="margin-left: 15px;" class="default-filter-container">
+                                            <input type="checkbox" name="default_filter_columns[]" 
+                                                value="<?php echo $i; ?>" 
+                                                <?php checked(in_array($i, $default_filter_columns)); ?>
+                                                <?php if (!in_array($i, $filterable_columns)) echo 'disabled'; ?>>
+                                            Apply first item by default
                                         </label>
                                     </div>
                                 <?php endfor; ?>
@@ -148,6 +160,33 @@ class CSV_Upload_Display {
                 </div>
             <?php endif; ?>
         </div>
+        
+        <script>
+        jQuery(function($) {
+            // Function to toggle default filter checkbox
+            function toggleDefaultFilter() {
+                $('.filterable-toggle').each(function() {
+                    var $filterable = $(this);
+                    var $defaultContainer = $filterable.closest('div').find('.default-filter-container');
+                    var $defaultCheckbox = $defaultContainer.find('input');
+                    
+                    if ($filterable.is(':checked')) {
+                        $defaultContainer.show();
+                        $defaultCheckbox.prop('disabled', false);
+                    } else {
+                        $defaultContainer.hide();
+                        $defaultCheckbox.prop('checked', false);
+                    }
+                });
+            }
+            
+            // Initial state
+            toggleDefaultFilter();
+            
+            // On change
+            $('.filterable-toggle').change(toggleDefaultFilter);
+        });
+        </script>
         <?php
     }
 
@@ -198,6 +237,7 @@ class CSV_Upload_Display {
         // Clear column selections when new CSV is uploaded
         delete_option('csv_selected_columns');
         delete_option('csv_filterable_columns');
+        delete_option('csv_default_filter_columns');
         
         $this->set_message('CSV file uploaded successfully!', 'success');
     }
@@ -244,6 +284,7 @@ class CSV_Upload_Display {
         
         $selected_columns = get_option('csv_selected_columns', array());
         $filterable_columns = get_option('csv_filterable_columns', array());
+        $default_filter_columns = get_option('csv_default_filter_columns', array());
         $headers = $csv_data['headers'] ?? array();
         $num_columns = count($csv_data['rows'][0]);
         
@@ -293,6 +334,8 @@ class CSV_Upload_Display {
                 <?php foreach ($selected_columns as $col_index) : 
                     if (in_array($col_index, $filterable_columns)) :
                         $header = $headers[$col_index] ?? 'Column ' . ($col_index + 1);
+                        $is_default = in_array($col_index, $default_filter_columns);
+                        $first_value = isset($unique_values[$col_index][0]) ? $unique_values[$col_index][0] : '';
                 ?>
                     <div class="csv-filter-group">
                         <label><?php echo esc_html($header); ?></label>
@@ -300,7 +343,10 @@ class CSV_Upload_Display {
                             <option value="">All</option>
                             <?php if (isset($unique_values[$col_index])) : ?>
                                 <?php foreach ($unique_values[$col_index] as $value) : ?>
-                                    <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($value); ?></option>
+                                    <option value="<?php echo esc_attr($value); ?>"
+                                        <?php if ($is_default && $value === $first_value) echo 'selected="selected"'; ?>>
+                                        <?php echo esc_html($value); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
@@ -350,9 +396,11 @@ function handle_save_csv_filters() {
     
     $selected_columns = isset($_POST['selected_columns']) ? array_map('intval', $_POST['selected_columns']) : [];
     $filterable_columns = isset($_POST['filterable_columns']) ? array_map('intval', $_POST['filterable_columns']) : [];
+    $default_filter_columns = isset($_POST['default_filter_columns']) ? array_map('intval', $_POST['default_filter_columns']) : [];
     
     update_option('csv_selected_columns', $selected_columns);
     update_option('csv_filterable_columns', $filterable_columns);
+    update_option('csv_default_filter_columns', $default_filter_columns);
     
     set_transient('csv_upload_message', 'Column settings saved successfully!', 30);
     set_transient('csv_upload_msg_type', 'success', 30);

@@ -6,9 +6,13 @@ jQuery(function($) {
         const $filterSelects = $container.find('.csv-filter-select');
         const $resetBtn = $container.find('.csv-reset-filters');
         
+        // Flag to track initial load
+        let initialLoad = true;
+        
         // Apply filters
         function applyFilters() {
             const filters = {};
+            let hasActiveFilter = false;
             
             $filterSelects.each(function() {
                 const colIndex = $(this).data('column');
@@ -16,6 +20,7 @@ jQuery(function($) {
                 
                 if (value) {
                     filters[colIndex] = value.toLowerCase();
+                    hasActiveFilter = true;
                 }
             });
             
@@ -37,6 +42,14 @@ jQuery(function($) {
                 
                 $row.toggle(showRow);
             });
+            
+            // On initial load, scroll to table if filters are applied
+            if (initialLoad && hasActiveFilter) {
+                initialLoad = false;
+                setTimeout(() => {
+                    $container.get(0).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
         }
         
         // Event listeners
@@ -47,7 +60,7 @@ jQuery(function($) {
             applyFilters();
         });
         
-        // Apply filters on initial load if any are selected
+        // Apply filters on initial load
         applyFilters();
     });
 });
