@@ -3,19 +3,19 @@ jQuery(function($) {
         const $container = $(this);
         const $table = $container.find('.csv-table');
         const $rows = $table.find('tbody tr');
-        const $filterInputs = $container.find('.csv-filter-input');
+        const $filterSelects = $container.find('.csv-filter-select');
         const $resetBtn = $container.find('.csv-reset-filters');
         
         // Apply filters
         function applyFilters() {
             const filters = {};
             
-            $filterInputs.each(function() {
+            $filterSelects.each(function() {
                 const colIndex = $(this).data('column');
-                const value = $(this).val().trim().toLowerCase();
+                const value = $(this).val().trim();
                 
                 if (value) {
-                    filters[colIndex] = value;
+                    filters[colIndex] = value.toLowerCase();
                 }
             });
             
@@ -26,9 +26,10 @@ jQuery(function($) {
                 // Check against all filters
                 for (const colIndex in filters) {
                     const $cell = $row.find('td[data-col-index="' + colIndex + '"]');
-                    const cellValue = $cell.text().toLowerCase();
+                    const cellValue = $cell.text().toLowerCase().trim();
                     
-                    if (!cellValue.includes(filters[colIndex])) {
+                    // Check for exact match
+                    if (cellValue !== filters[colIndex]) {
                         showRow = false;
                         break;
                     }
@@ -39,11 +40,14 @@ jQuery(function($) {
         }
         
         // Event listeners
-        $filterInputs.on('keyup', applyFilters);
+        $filterSelects.on('change', applyFilters);
         
         $resetBtn.on('click', function() {
-            $filterInputs.val('');
-            $rows.show();
+            $filterSelects.val('');
+            applyFilters();
         });
+        
+        // Apply filters on initial load if any are selected
+        applyFilters();
     });
 });

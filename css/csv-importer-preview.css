@@ -104,6 +104,30 @@
     border-radius: 4px;
 }
 
+.csv-filter-input, .csv-filter-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.csv-filter-select {
+    height: 36px;
+    background-color: white;
+    cursor: pointer;
+}
+.csv-filter-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    height: 36px;
+    background-color: white;
+    cursor: pointer;
+}
+
 .csv-reset-filters {
     align-self: flex-end;
     padding: 8px 15px;
@@ -117,3 +141,4 @@
 .csv-reset-filters:hover {
     background-color: #e9e9e9;
 }
+

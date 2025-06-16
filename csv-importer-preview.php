@@ -3,7 +3,7 @@
 Plugin Name: Admin CSV Upload & Frontend Display
 Description: Upload CSV from admin area and display on front-end with filtering
 Version: 2.1
-Author: Your Name
+Author: Thimira Perera
 */
 
 class CSV_Upload_Display {
@@ -252,16 +252,39 @@ class CSV_Upload_Display {
             $selected_columns = range(0, $num_columns - 1);
         }
         
-        $per_page = 10;
-        $current_page = isset($_GET['csv_page']) ? max(1, (int)$_GET['csv_page']) : 1;
+        // Precompute unique values for filterable columns
+        $unique_values = array();
+        if (!empty($filterable_columns)) {
+            foreach ($filterable_columns as $col_index) {
+                $unique_values[$col_index] = array();
+            }
+            
+            foreach ($csv_data['rows'] as $row) {
+                foreach ($filterable_columns as $col_index) {
+                    if (isset($row[$col_index])) {
+                        $value = $row[$col_index];
+                        if ($value !== '') {
+                            // Use the value as key to avoid duplicates
+                            $unique_values[$col_index][$value] = $value;
+                        }
+                    }
+                }
+            }
+            
+            // Sort and convert to indexed array
+            foreach ($filterable_columns as $col_index) {
+                if (isset($unique_values[$col_index])) {
+                    $values = array_values($unique_values[$col_index]);
+                    usort($values, function($a, $b) {
+                        return strcasecmp($a, $b);
+                    });
+                    $unique_values[$col_index] = $values;
+                }
+            }
+        }
         
-        $total_rows = count($csv_data['rows']);
-        $total_pages = ceil($total_rows / $per_page);
-        $current_page = min($current_page, $total_pages);
-        $offset = ($current_page - 1) * $per_page;
-        $rows = array_slice($csv_data['rows'], $offset, $per_page);
-        
-        $current_url = remove_query_arg('csv_page');
+        // We are not paginating because we want to filter the entire dataset
+        $rows = $csv_data['rows'];
         
         ob_start();
         ?>
@@ -273,9 +296,14 @@ class CSV_Upload_Display {
                 ?>
                     <div class="csv-filter-group">
                         <label><?php echo esc_html($header); ?></label>
-                        <input type="text" class="csv-filter-input" 
-                            data-column="<?php echo $col_index; ?>" 
-                            placeholder="Filter <?php echo esc_attr($header); ?>">
+                        <select class="csv-filter-select" data-column="<?php echo $col_index; ?>">
+                            <option value="">All</option>
+                            <?php if (isset($unique_values[$col_index])) : ?>
+                                <?php foreach ($unique_values[$col_index] as $value) : ?>
+                                    <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($value); ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
                     </div>
                 <?php endif; endforeach; ?>
                 <button type="button" class="csv-reset-filters">Reset Filters</button>
@@ -306,23 +334,6 @@ class CSV_Upload_Display {
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            
-            <?php if ($total_pages > 1) : ?>
-                <div class="csv-pagination">
-                    <?php 
-                    echo paginate_links(array(
-                        'base' => esc_url(add_query_arg('csv_page', '%#%', $current_url)),
-                        'format' => '',
-                        'prev_text' => __('« Previous'),
-                        'next_text' => __('Next »'),
-                        'total' => $total_pages,
-                        'current' => $current_page,
-                        'mid_size' => 2,
-                        'type' => 'list'
-                    ));
-                    ?>
-                </div>
-            <?php endif; ?>
         </div>
         <?php
         return ob_get_clean();
