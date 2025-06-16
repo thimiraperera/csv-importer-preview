@@ -8,6 +8,8 @@ Author: Your Name
 
 class CSV_Upload_Display {
 
+    private $css_enqueued = false;
+
     public function __construct() {
         // Admin hooks
         add_action('admin_menu', array($this, 'add_admin_page'));
@@ -15,6 +17,17 @@ class CSV_Upload_Display {
         
         // Frontend hooks
         add_shortcode('display_csv', array($this, 'frontend_display'));
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_styles'));
+    }
+
+    // Enqueue CSS only when shortcode is used
+    public function enqueue_styles() {
+        if ($this->css_enqueued) {
+            wp_enqueue_style(
+                'csv-importer-preview-css', 
+                plugin_dir_url(__FILE__) . 'css/csv-importer-preview.css'
+            );
+        }
     }
 
     // Add admin menu page
@@ -132,6 +145,7 @@ class CSV_Upload_Display {
 
     // Frontend display with shortcode
     public function frontend_display($atts) {
+        $this->css_enqueued = true;
         $csv_data = get_option('csv_upload_data');
         
         if (!$csv_data || empty($csv_data['rows'])) {
@@ -211,43 +225,6 @@ class CSV_Upload_Display {
                 ?>
             </div>
         </div>
-        
-        <style>
-            .csv-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-            }
-            .csv-table th, .csv-table td {
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: left;
-            }
-            .csv-table th {
-                background-color: #f2f2f2;
-                font-weight: bold;
-            }
-            .csv-pagination {
-                display: flex;
-                justify-content: center;
-                gap: 5px;
-                margin: 20px 0;
-            }
-            .csv-pagination a, .csv-pagination span {
-                padding: 8px 12px;
-                border: 1px solid #ddd;
-                text-decoration: none;
-                display: inline-block;
-            }
-            .csv-pagination .current {
-                background-color: #0073aa;
-                color: white;
-                border-color: #0073aa;
-            }
-            .csv-pagination a:hover {
-                background-color: #f1f1f1;
-            }
-        </style>
         <?php
         return ob_get_clean();
     }

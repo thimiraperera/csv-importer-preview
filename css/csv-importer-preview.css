@@ -1,0 +1,34 @@
+.csv-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+.csv-table th, .csv-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+.csv-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+.csv-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin: 20px 0;
+}
+.csv-pagination a, .csv-pagination span {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-decoration: none;
+    display: inline-block;
+}
+.csv-pagination .current {
+    background-color: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+.csv-pagination a:hover {
+    background-color: #f1f1f1;
+}
