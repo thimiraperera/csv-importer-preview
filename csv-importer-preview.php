@@ -2,7 +2,7 @@
 /*
 Plugin Name: Admin CSV Upload & Frontend Display
 Description: Upload multiple CSV files and display them with unique shortcodes
-Version: 3.0
+Version: 3.1
 Author: Thimira Perera
 */
 
@@ -74,7 +74,7 @@ class CSV_Upload_Display {
             <?php endif; ?>
             
             <?php if (!empty($csv_instances)) : ?>
-                <div class="card" style="margin-bottom:30px; max-width: unset;">
+                <div class="card" style="margin-bottom:30px; padding: 15px; max-width: unset;">
                     <h2>Your CSV Shortcodes</h2>
                     <table class="wp-list-table widefat fixed striped">
                         <thead>
@@ -101,6 +101,10 @@ class CSV_Upload_Display {
                                     <td>
                                         <a href="<?php echo esc_url(admin_url('admin.php?page=csv-upload&instance=' . $id)); ?>">
                                             Configure
+                                        </a>
+                                        |
+                                        <a href="#" class="csv-delete-instance" data-instance="<?php echo esc_attr($id); ?>">
+                                            Delete
                                         </a>
                                     </td>
                                 </tr>
@@ -194,7 +198,7 @@ class CSV_Upload_Display {
                     <?php submit_button('Save Column Settings'); ?>
                 </form>
                 
-                <div class="card" style="margin-top:20px; max-width: unset;">
+                <div class="card" style="margin-top:20px; padding: 15px; max-width: unset;">
                     <h2>Current Data Information</h2>
                     <p><strong>Instance ID:</strong> <?php echo esc_html($current_instance); ?></p>
                     <p><strong>Filename:</strong> <?php echo esc_html($csv_data['filename']); ?></p>
@@ -207,6 +211,12 @@ class CSV_Upload_Display {
                     </p>
                     <p><strong>Rows:</strong> <?php echo number_format(count($csv_data['rows'])); ?></p>
                     <p><strong>Columns:</strong> <?php echo $num_columns; ?></p>
+                    <p>
+                        <a href="#" class="csv-delete-instance button button-delete" 
+                            data-instance="<?php echo esc_attr($current_instance); ?>">
+                            Delete This CSV Instance
+                        </a>
+                    </p>
                 </div>
             <?php endif; ?>
         </div>
@@ -235,6 +245,30 @@ class CSV_Upload_Display {
             
             // On change
             $('.filterable-toggle').change(toggleDefaultFilter);
+            
+            // Delete instance handler
+            $('.csv-delete-instance').on('click', function(e) {
+                e.preventDefault();
+                
+                if (!confirm('Are you sure you want to delete this CSV instance? This action cannot be undone.')) {
+                    return;
+                }
+                
+                const instanceId = $(this).data('instance');
+                
+                $.post(ajaxurl, {
+                    action: 'delete_csv_instance',
+                    instance_id: instanceId,
+                    security: '<?php echo wp_create_nonce('csv_delete_nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                });
+            });
         });
         </script>
         <?php
@@ -489,6 +523,39 @@ function handle_save_csv_filters() {
     exit;
 }
 add_action('admin_post_save_csv_filters', 'handle_save_csv_filters');
+
+// Handle CSV instance deletion
+function handle_delete_csv_instance() {
+    check_ajax_referer('csv_delete_nonce', 'security');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Permission denied'));
+    }
+    
+    $instance_id = isset($_POST['instance_id']) ? sanitize_key($_POST['instance_id']) : '';
+    if (empty($instance_id)) {
+        wp_send_json_error(array('message' => 'Instance ID is required'));
+    }
+    
+    $instances = get_option('csv_upload_instances', array());
+    
+    if (isset($instances[$instance_id])) {
+        unset($instances[$instance_id]);
+        update_option('csv_upload_instances', $instances);
+        
+        // Delete instance-specific settings
+        delete_option('csv_selected_columns_' . $instance_id);
+        delete_option('csv_filterable_columns_' . $instance_id);
+        delete_option('csv_default_filter_columns_' . $instance_id);
+        
+        wp_send_json_success(array(
+            'message' => 'CSV instance deleted successfully!'
+        ));
+    }
+    
+    wp_send_json_error(array('message' => 'CSV instance not found'));
+}
+add_action('wp_ajax_delete_csv_instance', 'handle_delete_csv_instance');
 
 function csv_upload_display_init() {
     new CSV_Upload_Display();

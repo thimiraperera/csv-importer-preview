@@ -140,3 +140,26 @@
 .csv-reset-filters:hover {
     background-color: #e9e9e9;
 }
+
+/* Delete button styles */
+.button-delete {
+    background-color: #dc3232;
+    border-color: #dc3232;
+    color: white;
+}
+
+.button-delete:hover {
+    background-color: #aa0000;
+    border-color: #aa0000;
+    color: white;
+}
+
+.csv-delete-instance {
+    color: #a00;
+    text-decoration: none;
+}
+
+.csv-delete-instance:hover {
+    color: #dc3232;
+    text-decoration: underline;
+}
