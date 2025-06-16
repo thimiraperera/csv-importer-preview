@@ -1,34 +1,119 @@
+/* No changes needed - styles are correct */
+.csv-display {
+    margin: 20px 0;
+    overflow-x: auto;
+}
+
 .csv-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    margin: 20px 0;
 }
+
 .csv-table th, .csv-table td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 12px 15px;
     text-align: left;
 }
+
 .csv-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
+    background-color: #f8f9fa;
+    font-weight: 600;
 }
+
+.csv-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.csv-table tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
 .csv-pagination {
     display: flex;
     justify-content: center;
-    gap: 5px;
-    margin: 20px 0;
+    margin: 25px 0;
 }
+
+.csv-pagination ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 5px;
+}
+
+.csv-pagination li {
+    margin: 0;
+}
+
 .csv-pagination a, .csv-pagination span {
-    padding: 8px 12px;
+    display: block;
+    padding: 8px 15px;
     border: 1px solid #ddd;
     text-decoration: none;
-    display: inline-block;
+    color: #0073aa;
+    border-radius: 3px;
+    transition: all 0.2s;
 }
+
 .csv-pagination .current {
     background-color: #0073aa;
     color: white;
     border-color: #0073aa;
 }
+
 .csv-pagination a:hover {
     background-color: #f1f1f1;
+}
+
+.csv-no-data {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.csv-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.csv-filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+}
+
+.csv-filter-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.csv-filter-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.csv-reset-filters {
+    align-self: flex-end;
+    padding: 8px 15px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.csv-reset-filters:hover {
+    background-color: #e9e9e9;
 }
