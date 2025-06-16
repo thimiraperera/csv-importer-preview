@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Admin CSV Upload & Frontend Display
-Description: Upload CSV from admin area and display on front-end with filtering
-Version: 2.2
+Description: Upload multiple CSV files and display them with unique shortcodes
+Version: 3.0
 Author: Thimira Perera
 */
 
@@ -49,15 +49,19 @@ class CSV_Upload_Display {
 
         $message = get_transient('csv_upload_message');
         $msg_type = get_transient('csv_upload_msg_type');
-        $csv_data = get_option('csv_upload_data');
+        $csv_instances = get_option('csv_upload_instances', array());
         
-        // Get options
-        $selected_columns = get_option('csv_selected_columns', array());
-        $filterable_columns = get_option('csv_filterable_columns', array());
-        $default_filter_columns = get_option('csv_default_filter_columns', array());
+        // Get current instance ID from URL if exists
+        $current_instance = isset($_GET['instance']) ? sanitize_key($_GET['instance']) : '';
+        $csv_data = $current_instance && isset($csv_instances[$current_instance]) ? $csv_instances[$current_instance] : null;
+        
+        // Get options for current instance
+        $selected_columns = $current_instance ? get_option('csv_selected_columns_' . $current_instance, array()) : array();
+        $filterable_columns = $current_instance ? get_option('csv_filterable_columns_' . $current_instance, array()) : array();
+        $default_filter_columns = $current_instance ? get_option('csv_default_filter_columns_' . $current_instance, array()) : array();
         ?>
         <div class="wrap">
-            <h1>Upload CSV File</h1>
+            <h1>CSV Upload Manager</h1>
             
             <?php if ($message) : ?>
                 <div class="notice notice-<?php echo esc_attr($msg_type); ?> is-dismissible">
@@ -69,14 +73,61 @@ class CSV_Upload_Display {
                 ?>
             <?php endif; ?>
             
+            <?php if (!empty($csv_instances)) : ?>
+                <div class="card" style="margin-bottom:30px; max-width: unset;">
+                    <h2>Your CSV Shortcodes</h2>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th>Shortcode</th>
+                                <th>Instance ID</th>
+                                <th>Filename</th>
+                                <th>Rows</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($csv_instances as $id => $instance) : 
+                                $date = date_i18n(get_option('date_format'), $instance['timestamp']);
+                                $time = date_i18n(get_option('time_format'), $instance['timestamp']);
+                            ?>
+                                <tr>
+                                    <td><code>[display_csv id="<?php echo esc_attr($id); ?>"]</code></td>
+                                    <td><?php echo esc_html($id); ?></td>
+                                    <td><?php echo esc_html($instance['filename']); ?></td>
+                                    <td><?php echo number_format(count($instance['rows'])); ?></td>
+                                    <td><?php echo esc_html("$date $time"); ?></td>
+                                    <td>
+                                        <a href="<?php echo esc_url(admin_url('admin.php?page=csv-upload&instance=' . $id)); ?>">
+                                            Configure
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+            
+            <h2><?php echo $current_instance ? 'Configure ' . esc_html($current_instance) : 'Upload New CSV'; ?></h2>
             <form method="post" enctype="multipart/form-data">
                 <?php wp_nonce_field('csv_upload_nonce', 'csv_nonce'); ?>
                 <input type="hidden" name="action" value="csv_upload">
                 <table class="form-table">
                     <tr>
+                        <th scope="row"><label for="instance_id">Instance ID</label></th>
+                        <td>
+                            <input type="text" name="instance_id" id="instance_id" 
+                                value="<?php echo $current_instance ? esc_attr($current_instance) : ''; ?>"
+                                <?php echo $current_instance ? 'readonly' : 'required'; ?>>
+                            <p class="description">Unique identifier (e.g., products, locations). Letters, numbers and underscores only.</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><label for="csv_file">CSV File</label></th>
                         <td>
-                            <input type="file" name="csv_file" accept=".csv,text/csv" required>
+                            <input type="file" name="csv_file" accept=".csv,text/csv" <?php echo $current_instance ? '' : 'required'; ?>>
                             <p class="description">Upload a CSV file (max 2MB)</p>
                         </td>
                     </tr>
@@ -90,7 +141,7 @@ class CSV_Upload_Display {
                         </td>
                     </tr>
                 </table>
-                <?php submit_button('Upload CSV'); ?>
+                <?php submit_button($current_instance ? 'Update CSV' : 'Upload CSV'); ?>
             </form>
             
             <?php if ($csv_data && !empty($csv_data['rows'])) : 
@@ -102,6 +153,7 @@ class CSV_Upload_Display {
                 <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
                     <?php wp_nonce_field('csv_filter_nonce', 'csv_filter_nonce'); ?>
                     <input type="hidden" name="action" value="save_csv_filters">
+                    <input type="hidden" name="instance_id" value="<?php echo esc_attr($current_instance); ?>">
                     
                     <table class="form-table">
                         <tr>
@@ -142,17 +194,15 @@ class CSV_Upload_Display {
                     <?php submit_button('Save Column Settings'); ?>
                 </form>
                 
-                <div class="card" style="margin-top:20px;">
+                <div class="card" style="margin-top:20px; max-width: unset;">
                     <h2>Current Data Information</h2>
-                    <p><strong>Last uploaded:</strong> 
+                    <p><strong>Instance ID:</strong> <?php echo esc_html($current_instance); ?></p>
+                    <p><strong>Filename:</strong> <?php echo esc_html($csv_data['filename']); ?></p>
+                    <p><strong>Last updated:</strong> 
                         <?php 
-                        if (isset($csv_data['timestamp'])) {
-                            $date = date_i18n(get_option('date_format'), $csv_data['timestamp']);
-                            $time = date_i18n(get_option('time_format'), $csv_data['timestamp']);
-                            echo esc_html($date . ' ' . $time);
-                        } else {
-                            echo 'N/A';
-                        }
+                        $date = date_i18n(get_option('date_format'), $csv_data['timestamp']);
+                        $time = date_i18n(get_option('time_format'), $csv_data['timestamp']);
+                        echo esc_html($date . ' ' . $time); 
                         ?>
                     </p>
                     <p><strong>Rows:</strong> <?php echo number_format(count($csv_data['rows'])); ?></p>
@@ -200,7 +250,17 @@ class CSV_Upload_Display {
             return;
         }
         
+        $instance_id = isset($_POST['instance_id']) ? sanitize_key($_POST['instance_id']) : '';
+        if (empty($instance_id)) {
+            $this->set_message('Instance ID is required', 'error');
+            return;
+        }
+        
         if (empty($_FILES['csv_file']['tmp_name'])) {
+            // Allow form submission without file for configuration
+            if (isset($_GET['instance']) && $_GET['instance'] === $instance_id) {
+                return;
+            }
             $this->set_message('Please select a CSV file to upload', 'error');
             return;
         }
@@ -228,18 +288,27 @@ class CSV_Upload_Display {
             return;
         }
         
-        update_option('csv_upload_data', array(
+        $instances = get_option('csv_upload_instances', array());
+        
+        $instances[$instance_id] = array(
             'headers' => $use_headers ? array_shift($csv_data) : array(),
             'rows' => $csv_data,
-            'timestamp' => time()
-        ));
+            'timestamp' => time(),
+            'filename' => sanitize_file_name($file['name'])
+        );
+        
+        update_option('csv_upload_instances', $instances);
         
         // Clear column selections when new CSV is uploaded
-        delete_option('csv_selected_columns');
-        delete_option('csv_filterable_columns');
-        delete_option('csv_default_filter_columns');
+        $this->clear_instance_settings($instance_id);
         
         $this->set_message('CSV file uploaded successfully!', 'success');
+    }
+    
+    private function clear_instance_settings($instance_id) {
+        delete_option('csv_selected_columns_' . $instance_id);
+        delete_option('csv_filterable_columns_' . $instance_id);
+        delete_option('csv_default_filter_columns_' . $instance_id);
     }
     
     private function set_message($message, $type = 'success') {
@@ -276,15 +345,22 @@ class CSV_Upload_Display {
         wp_enqueue_style('csv-importer-preview-css');
         wp_enqueue_script('csv-filter-js');
         
-        $csv_data = get_option('csv_upload_data');
+        $atts = shortcode_atts(array(
+            'id' => 'default'
+        ), $atts);
         
-        if (!$csv_data || empty($csv_data['rows'])) {
-            return '<div class="csv-no-data">No CSV data available</div>';
+        $instance_id = sanitize_key($atts['id']);
+        $instances = get_option('csv_upload_instances', array());
+        
+        if (!isset($instances[$instance_id])) {
+            return '<div class="csv-no-data">CSV data not found for this instance</div>';
         }
         
-        $selected_columns = get_option('csv_selected_columns', array());
-        $filterable_columns = get_option('csv_filterable_columns', array());
-        $default_filter_columns = get_option('csv_default_filter_columns', array());
+        $csv_data = $instances[$instance_id];
+        
+        $selected_columns = get_option('csv_selected_columns_' . $instance_id, array());
+        $filterable_columns = get_option('csv_filterable_columns_' . $instance_id, array());
+        $default_filter_columns = get_option('csv_default_filter_columns_' . $instance_id, array());
         $headers = $csv_data['headers'] ?? array();
         $num_columns = count($csv_data['rows'][0]);
         
@@ -324,7 +400,6 @@ class CSV_Upload_Display {
             }
         }
         
-        // We are not paginating because we want to filter the entire dataset
         $rows = $csv_data['rows'];
         
         ob_start();
@@ -394,18 +469,23 @@ function handle_save_csv_filters() {
         wp_die('Invalid request');
     }
     
+    $instance_id = isset($_POST['instance_id']) ? sanitize_key($_POST['instance_id']) : '';
+    if (empty($instance_id)) {
+        wp_die('Instance ID is required');
+    }
+    
     $selected_columns = isset($_POST['selected_columns']) ? array_map('intval', $_POST['selected_columns']) : [];
     $filterable_columns = isset($_POST['filterable_columns']) ? array_map('intval', $_POST['filterable_columns']) : [];
     $default_filter_columns = isset($_POST['default_filter_columns']) ? array_map('intval', $_POST['default_filter_columns']) : [];
     
-    update_option('csv_selected_columns', $selected_columns);
-    update_option('csv_filterable_columns', $filterable_columns);
-    update_option('csv_default_filter_columns', $default_filter_columns);
+    update_option('csv_selected_columns_' . $instance_id, $selected_columns);
+    update_option('csv_filterable_columns_' . $instance_id, $filterable_columns);
+    update_option('csv_default_filter_columns_' . $instance_id, $default_filter_columns);
     
     set_transient('csv_upload_message', 'Column settings saved successfully!', 30);
     set_transient('csv_upload_msg_type', 'success', 30);
     
-    wp_safe_redirect(admin_url('admin.php?page=csv-upload'));
+    wp_safe_redirect(admin_url('admin.php?page=csv-upload&instance=' . $instance_id));
     exit;
 }
 add_action('admin_post_save_csv_filters', 'handle_save_csv_filters');
