@@ -1,6 +1,5 @@
 # WordPress CSV Upload & Frontend Display Plugin
 
-![Plugin Workflow](https://via.placeholder.com/800x400?text=CSV+Upload+Plugin+Screenshot)  
 *Upload, manage, and display CSV data with powerful filtering capabilities*
 
 ## ✨ Features
